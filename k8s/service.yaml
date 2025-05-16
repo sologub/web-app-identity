@@ -1,0 +1,15 @@
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-identity-service
+spec:
+  type: LoadBalancer # Expune serviciul extern utilizând un load balancer.
+                     # În Rancher Desktop, acest lucru va aloca de obicei localhost sau o adresă IP locală.
+                     # Alternativ, puteți folosi 'NodePort' pentru expunere pe un port specific pe IP-ul nodului.
+  selector:
+    app: webapp-identity # Selectează Pod-urile cu această etichetă (cele create de Deployment)
+  ports:
+  - protocol: TCP
+    port: 8080       # Portul pe care serviciul va fi accesibil extern (același ca în `docker run -p 8080:80`)
+    targetPort: 80   # Portul pe care containerul ascultă (containerPort din Deployment)

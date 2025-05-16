@@ -1,0 +1,13 @@
+# pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webappidentity-dpkeys-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce # Volumul poate fi montat ca read-write de un singur nod la un moment dat.
+                    # Potrivit pentru majoritatea cazurilor în Rancher Desktop.
+  resources:
+    requests:
+      storage: 1Gi # 1 Gigabyte de stocare
+  

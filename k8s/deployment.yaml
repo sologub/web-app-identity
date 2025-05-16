@@ -1,0 +1,35 @@
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-identity-deployment
+  labels:
+    app: webapp-identity # Etichetă pentru a identifica resursele asociate acestei aplicații
+spec:
+  replicas: 1 # Numărul de instanțe ale aplicației pe care doriți să le rulați
+  selector:
+    matchLabels:
+      app: webapp-identity # Acest selector conectează Deployment-ul cu Pod-urile pe care le gestionează
+  template: # Șablonul pentru crearea Pod-urilor
+    metadata:
+      labels:
+        app: webapp-identity # Eticheta aplicată Pod-urilor
+    spec:
+      containers:
+      - name: webapp-identity-container
+        image: webapp-identity:latest # Numele imaginii Docker construite în Lucrarea 2
+        imagePullPolicy: IfNotPresent   # Politica de preluare a imaginii:
+                                        # 'IfNotPresent': Preia imaginea dacă nu există local.
+                                        # 'Never': Presupune că imaginea este locală (potrivit dacă ați construit-o local).
+                                        # 'Always': Preia mereu imaginea (util pentru tag-uri 'latest' din registre).
+        ports:
+        - containerPort: 80 # Portul pe care aplicația ascultă în interiorul containerului
+                            # (conform ENV ASPNETCORE_URLS="http://*:80" din Dockerfile)
+        volumeMounts:
+        - name: dpkeys-storage # Numele referinței la volum
+          mountPath: /var/dpkeys # Calea în container unde volumul va fi montat
+                                 # (conform configurării Data Protection: new DirectoryInfo("/var/dpkeys"))
+      volumes: # Definirea volumelor disponibile pentru Pod
+      - name: dpkeys-storage # Numele volumului, trebuie să corespundă cu 'volumeMounts.name'
+        persistentVolumeClaim:
+          claimName: webappidentity-dpkeys-pvc # Numele PersistentVolumeClaim creat anterior
