@@ -1,0 +1,30 @@
+steps:
+# Pasul 1: Construiește imaginea Docker
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA', '.']
+  id: 'Build Docker Image'
+
+# Pasul 2: Publică imaginea în Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA']
+  id: 'Push to Artifact Registry'
+
+# Pasul 3: Obține credențialele pentru clusterul GKE
+- name: 'gcr.io/cloud-builders/gke-deploy' # Alternativ, puteți folosi gcloud direct
+  args:
+  - 'run'
+  - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
+  - '--location=europe-west1-b' # Zona clusterului GKE
+  - '--cluster=webapp-cluster'   # Numele clusterului GKE
+  - '--namespace=default'        # Namespace-ul Kubernetes
+  - '--deployment=webapp-identity-deployment' # Numele deployment-ului Kubernetes din YAML
+  - '--filename=k8s/deployment.yaml' # Specificați fișierele YAML dacă gke-deploy le gestionează
+  
+images:
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
+
+# Opțional: timeout pentru build
+timeout: '1200s' # 20 minute
+
+options:
+  logging: NONE
