@@ -58,7 +58,7 @@ steps:
     args:
       - 'run'
       - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
-      - '--location=europe-west1-b' # Zona clusterului GKE
+      - '--location=europe-west1' # Zona clusterului GKE
       - '--cluster=webapp-cluster' # Numele clusterului GKE
       - '--namespace=default' # Namespace-ul Kubernetes      
       - '--filename=k8s/deployment.yaml' # Calea către fișierul de deployment principal
