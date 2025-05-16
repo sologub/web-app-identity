@@ -24,7 +24,7 @@ steps:
       - clusters
       - get-credentials
       - webapp-cluster # Numele clusterului GKE
-      - --zone=europe-west1-b # Zona clusterului GKE
+      - --zone=europe-west1 # Zona clusterului GKE
       - --project=$PROJECT_ID
     id: 'Get GKE Credentials'
     waitFor: ['Push to Artifact Registry'] # Ensures this step runs after the image is pushed
