@@ -14,7 +14,7 @@ Table of contents:
 Create a Razor Pages web app with ASP.NET Core
 
 ```
-dotnet new webapp -o WebAppIdentity 
+dotnet new webapp -o WebAppIdentity
 ```
 
 Test the application with:
