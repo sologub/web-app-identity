@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: webapp-identity-container
-        image: image: europe-west1-docker.pkg.dev/stone-tract-460009-d0/webapp-identity-registry/webapp-identity:placeholder
+        image: europe-west1-docker.pkg.dev/stone-tract-460009-d0/webapp-identity-registry/webapp-identity:placeholder
         imagePullPolicy: IfNotPresent   # Politica de preluare a imaginii:
                                         # 'IfNotPresent': Preia imaginea dacă nu există local.
                                         # 'Never': Presupune că imaginea este locală (potrivit dacă ați construit-o local).
