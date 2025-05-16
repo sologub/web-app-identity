@@ -1,30 +1,85 @@
+# cloudbuild.yaml
 steps:
-# Pasul 1: Construiește imaginea Docker
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA', '.']
-  id: 'Build Docker Image'
+  # Pasul 1: Construiește imaginea Docker
+  # Builds the Docker image using the Dockerfile in the current directory (.)
+  # and tags it with the Artifact Registry path and the commit SHA.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA', '.']
+    id: 'Build Docker Image'
 
-# Pasul 2: Publică imaginea în Artifact Registry
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA']
-  id: 'Push to Artifact Registry'
+  # Pasul 2: Publică imaginea în Artifact Registry
+  # Pushes the tagged Docker image to Google Cloud Artifact Registry.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA']
+    id: 'Push to Artifact Registry'
+    waitFor: ['Build Docker Image'] # Ensures this step runs after the image is built
 
-# Pasul 3: Obține credențialele pentru clusterul GKE
-- name: 'gcr.io/cloud-builders/gke-deploy' # Alternativ, puteți folosi gcloud direct
-  args:
-  - 'run'
-  - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
-  - '--location=europe-west1-b' # Zona clusterului GKE
-  - '--cluster=webapp-cluster'   # Numele clusterului GKE
-  - '--namespace=default'        # Namespace-ul Kubernetes
-  - '--deployment=webapp-identity-deployment' # Numele deployment-ului Kubernetes din YAML
-  - '--filename=k8s/deployment.yaml' # Specificați fișierele YAML dacă gke-deploy le gestionează
-  
+  # Pasul 3: Obține credențialele pentru clusterul GKE
+  # Fetches credentials for the specified GKE cluster, allowing subsequent kubectl commands to interact with it.
+  # This step is crucial for the kubectl apply commands that follow.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - container
+      - clusters
+      - get-credentials
+      - webapp-cluster # Numele clusterului GKE
+      - --zone=europe-west1-b # Zona clusterului GKE
+      - --project=$PROJECT_ID
+    id: 'Get GKE Credentials'
+    waitFor: ['Push to Artifact Registry'] # Ensures this step runs after the image is pushed
+
+  # Pasul 4: Aplică PersistentVolumeClaim (PVC)
+  # Applies the PersistentVolumeClaim manifest. This should be done before deploying workloads that depend on it.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: kubectl
+    args:
+      - apply
+      - -f
+      - k8s/pvc.yaml # Calea către fișierul PVC
+    id: 'Apply PVC'
+    waitFor: ['Get GKE Credentials'] # Ensures credentials are set and PVC is applied before deployment
+
+  # Pasul 5: Aplică Service
+  # Applies the Service manifest to expose the application.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: kubectl
+    args:
+      - apply
+      - -f
+      - k8s/service.yaml # Calea către fișierul Service
+    id: 'Apply Service'
+    waitFor: ['Get GKE Credentials'] # Ensures credentials are set
+
+  # Pasul 6: Implementează în GKE folosind gke-deploy
+  # Deploys the application to GKE using gke-deploy.
+  # This tool helps manage the deployment process, including updating the image in the deployment manifest.
+  - name: 'gcr.io/cloud-builders/gke-deploy'
+    args:
+      - 'run'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
+      - '--location=europe-west1-b' # Zona clusterului GKE
+      - '--cluster=webapp-cluster' # Numele clusterului GKE
+      - '--namespace=default' # Namespace-ul Kubernetes
+      - '--deployment=webapp-identity-deployment' # Numele deployment-ului Kubernetes din YAML
+      - '--filename=k8s/deployment.yaml' # Calea către fișierul de deployment principal
+    id: 'Deploy to GKE'
+    waitFor:
+      - 'Apply PVC' # Ensures PVC is attempted before deployment
+      - 'Apply Service' # Ensures Service is attempted before deployment
+
+# Lista imaginilor construite de acest build.
+# This list is used by Cloud Build to identify images built by this pipeline.
 images:
-- 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/webapp-identity-registry/webapp-identity:$COMMIT_SHA'
 
 # Opțional: timeout pentru build
 timeout: '1200s' # 20 minute
 
+# Opțiuni de logging
 options:
-  logging: NONE
+  logging: CLOUD_LOGGING_ONLY # Trimite logurile către Cloud Logging. Recomandat în loc de NONE.
+  # Alte opțiuni de logging posibile:
+  # logging: GCS_ONLY # Trimite logurile către Google Cloud Storage
+  # logging: LEGACY # Comportamentul vechi de logging
+  # logging: NONE # Dezactivează logging-ul (nerecomandat pentru producție sau depanare)
